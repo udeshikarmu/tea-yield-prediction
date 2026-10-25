@@ -1,0 +1,20 @@
+
+================================================================================
+EXPLAINABLE AI (XAI) DOMAIN KNOWLEDGE ALIGNMENT (For Assignment Report - Section 4)
+================================================================================
+
+1. Rainfall Lag Effects (rainfall_lag_1m and rainfall_lag_2m):
+   - Finding: Lagged rainfall has the strongest positive SHAP influence on monthly yield.
+   - Agronomic Validation: Tea shoots ('two leaves and a bud') take 35 to 60 days to flush 
+     following rain stimulation. Rainfall in month t-1 directly fuels month t's harvest.
+
+2. Temperature Non-linearity (avg_temp_c & min_temp_c):
+   - Finding: Cold temperatures (<13°C) produce strong negative SHAP values in Up Country (Nuwara Eliya),
+     while temperatures >30°C cause negative SHAP values in Low Country (Ratnapura).
+   - Agronomic Validation: Matches Tea Research Institute (TRI) physiology: photosynthesis slows down 
+     below 13°C and heat stress causes stomatal closure above 30°C.
+
+3. Sunshine Hours:
+   - Finding: High sunshine hours provide positive SHAP values when soil moisture is sufficient, 
+     but overcast monsoon periods decrease harvest volume due to reduced solar radiation.
+================================================================================

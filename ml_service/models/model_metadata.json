@@ -1,0 +1,53 @@
+{
+    "features": [
+        "zone",
+        "district",
+        "elevation_m",
+        "month",
+        "rainfall_mm",
+        "rainy_days",
+        "avg_temp_c",
+        "min_temp_c",
+        "max_temp_c",
+        "sunshine_hours",
+        "relative_humidity",
+        "rainfall_lag_1m",
+        "rainfall_lag_2m",
+        "month_sin",
+        "month_cos",
+        "diurnal_temp_range",
+        "rolling_3m_rainfall",
+        "drought_stress_flag",
+        "cold_stress_flag",
+        "heat_stress_flag"
+    ],
+    "cat_features": [
+        "zone",
+        "district"
+    ],
+    "num_features": [
+        "elevation_m",
+        "month",
+        "rainfall_mm",
+        "rainy_days",
+        "avg_temp_c",
+        "min_temp_c",
+        "max_temp_c",
+        "sunshine_hours",
+        "relative_humidity",
+        "rainfall_lag_1m",
+        "rainfall_lag_2m",
+        "month_sin",
+        "month_cos",
+        "diurnal_temp_range",
+        "rolling_3m_rainfall",
+        "drought_stress_flag",
+        "cold_stress_flag",
+        "heat_stress_flag"
+    ],
+    "metrics": {
+        "test_rmse": 11.46,
+        "test_mae": 8.71,
+        "test_r2": 0.908
+    }
+}
