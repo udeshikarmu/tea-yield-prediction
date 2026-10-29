@@ -17,10 +17,10 @@ jobs:
 
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Log in to GitHub Container Registry (GHCR)
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -51,5 +51,4 @@ jobs:
           az containerapp update \
             --name tea-harvest-service \
             --resource-group rg-tea-mlops \
-            --image ghcr.io/${{ github.repository }}/tea-api:latest \
-            --revision-suffix v-${{ github.run_number }}
+            --image ghcr.io/${{ github.repository }}/tea-api:latest
