@@ -41,12 +41,10 @@ jobs:
 
       - name: Deploy Revision to Azure Container Apps
         run: |
-          az containerapp registry set \
+          az containerapp registry remove \
             --name tea-harvest-service \
             --resource-group rg-tea-mlops \
-            --server ghcr.io \
-            --username ${{ github.actor }} \
-            --password ${{ secrets.GITHUB_TOKEN }}
+            --server ghcr.io || true
 
           az containerapp update \
             --name tea-harvest-service \
