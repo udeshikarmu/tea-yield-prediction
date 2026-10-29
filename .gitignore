@@ -1,0 +1,26 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+
+# CatBoost info
+catboost_info/
+
+# Next.js build
+frontend/.next/
+frontend/out/
+frontend/node_modules/
+
+# Logs & temp
+logs/*.jsonl
+!logs/.gitkeep
+.pytest_cache/
+.DS_Store
+Thumbs.db

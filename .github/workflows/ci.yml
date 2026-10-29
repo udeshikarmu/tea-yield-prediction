@@ -1,0 +1,45 @@
+name: CI Pipeline & Quality Gate
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test_and_quality_gate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run Unit Tests
+        run: pytest tests/ -v
+
+      - name: Execute Temporal Preprocessing
+        run: python src/preprocess.py
+
+      - name: Train Champion CatBoost & Baselines
+        env:
+          DAGSHUB_USERNAME: ${{ secrets.DAGSHUB_USERNAME }}
+          DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
+        run: python src/train.py
+
+      - name: Enforce MLOps Quality Gate
+        run: python src/quality_gate.py
+
+      - name: Upload Evaluation Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: mlops-evaluation-reports
+          path: reports/

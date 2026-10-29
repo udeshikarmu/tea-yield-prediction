@@ -1,0 +1,6 @@
+{
+  "min_test_f1": 0.85,
+  "min_test_roc_auc": 0.88,
+  "min_test_accuracy": 0.82,
+  "max_latency_ms": 250
+}

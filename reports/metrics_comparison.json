@@ -1,0 +1,23 @@
+{
+  "CatBoost (Champion)": {
+    "Accuracy": 0.9874,
+    "Precision": 0.9845,
+    "Recall": 0.9961,
+    "F1_Score": 0.9903,
+    "ROC_AUC": 0.9998
+  },
+  "Decision Tree (Baseline)": {
+    "Accuracy": 0.9899,
+    "Precision": 0.9883,
+    "Recall": 0.9961,
+    "F1_Score": 0.9922,
+    "ROC_AUC": 0.9871
+  },
+  "Logistic Regression (Baseline)": {
+    "Accuracy": 0.6869,
+    "Precision": 0.7399,
+    "Recall": 0.7922,
+    "F1_Score": 0.7652,
+    "ROC_AUC": 0.6679
+  }
+}

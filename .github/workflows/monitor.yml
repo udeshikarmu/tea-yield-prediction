@@ -1,0 +1,51 @@
+name: Closed-Loop Monitoring & Drift Retraining
+
+on:
+  schedule:
+    - cron: '0 0 * * 0' # Runs weekly on Sunday at midnight
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  drift_check_and_retrain:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install Dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run Drift Check
+        id: drift
+        run: python monitoring/run_drift.py
+        continue-on-error: true
+
+      - name: Trigger Automated Retraining PR if Drift Flagged
+        if: steps.drift.outcome == 'failure'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BRANCH_NAME="auto-retrain-drift-${{ github.run_id }}"
+          git checkout -b $BRANCH_NAME
+          python src/preprocess.py
+          python src/train.py
+          python src/quality_gate.py
+          
+          git config user.name "Tea-MLOps-Bot"
+          git config user.email "bot@mlops.internal"
+          git add models/ reports/
+          git commit -m "Automated Retrain: Drift Mitigated Champion Model Update"
+          git push origin $BRANCH_NAME
+          
+          gh pr create --title "Automated Retraining: Agro-Climatic Drift Mitigated" \
+                       --body "Significant agro-climatic feature drift was flagged by the monitoring service. The model has been retrained, passed the quality gate, and is awaiting verification." \
+                       --base main
