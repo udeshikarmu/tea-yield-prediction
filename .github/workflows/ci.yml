@@ -2,9 +2,9 @@ name: CI Pipeline & Quality Gate
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, master ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, master ]
 
 jobs:
   test_and_quality_gate:
@@ -39,7 +39,7 @@ jobs:
         run: python src/quality_gate.py
 
       - name: Upload Evaluation Artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: mlops-evaluation-reports
           path: reports/
