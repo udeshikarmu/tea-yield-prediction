@@ -1,0 +1,43 @@
+project_name: "sri-lankan-tea-harvest-mlops"
+version: "1.0.0"
+author: "Agro-Climatic Intelligence Team"
+
+data:
+  raw_path: "data/raw/sri_lanka_tea_tri.gov_ds.csv"
+  processed_dir: "data/processed"
+  temporal_split:
+    train_end_year: 2018
+    val_end_year: 2021
+    test_start_year: 2022
+  target: "harvest_ready"
+  features:
+    categorical:
+      - "region"
+      - "zone"
+      - "season"
+    numerical:
+      - "elevation_m"
+      - "rainfall_mm"
+      - "temperature_c"
+      - "humidity_percent"
+      - "soil_moisture_percent"
+      - "ndvi_index"
+      - "month"
+
+model:
+  algorithm: "CatBoostClassifier"
+  params:
+    iterations: 600
+    learning_rate: 0.04
+    depth: 6
+    loss_function: "Logloss"
+    eval_metric: "F1"
+    random_seed: 42
+  early_stopping_rounds: 50
+
+registry:
+  model_name: "TeaHarvestReadinessChampion"
+  stage: "Production"
+
+tracking:
+  experiment_name: "tea-harvest-readiness-experiment"

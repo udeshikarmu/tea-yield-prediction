@@ -1,3 +1,0 @@
-Model,Test_RMSE_kg_ha,Test_MAE_kg_ha,Test_R2
-Random Forest (Baseline),12.37,9.7,0.8929
-CatBoost (Assignment Model),11.46,8.71,0.908
