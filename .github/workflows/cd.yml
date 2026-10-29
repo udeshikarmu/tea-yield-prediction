@@ -2,7 +2,7 @@ name: CD Deploy to Azure Container Apps (Keyless OIDC)
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ main, master, feature/initial-setup ]
   workflow_dispatch:
 
 permissions:

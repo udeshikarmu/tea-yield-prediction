@@ -2,7 +2,7 @@ name: CI Pipeline & Quality Gate
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ main, master, feature/initial-setup ]
   pull_request:
     branches: [ main, master ]
 
