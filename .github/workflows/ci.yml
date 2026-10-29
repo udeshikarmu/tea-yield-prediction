@@ -2,19 +2,19 @@ name: CI Pipeline & Quality Gate
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, master ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, master ]
 
 jobs:
   test_and_quality_gate:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
@@ -23,8 +23,17 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Run Unit Tests
-        run: pytest tests/ -v
+      - name: Pull Dataset from DagsHub DVC (if needed)
+        env:
+          DAGSHUB_USERNAME: ${{ secrets.DAGSHUB_USERNAME }}
+          DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
+        run: |
+          if [ ! -f "data/raw/sri_lanka_tea_tri.gov_ds.csv" ]; then
+            dvc remote modify origin --local auth basic
+            dvc remote modify origin --local user "$DAGSHUB_USERNAME"
+            dvc remote modify origin --local password "$DAGSHUB_TOKEN"
+            dvc pull
+          fi
 
       - name: Execute Temporal Preprocessing
         run: python src/preprocess.py
@@ -35,11 +44,14 @@ jobs:
           DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
         run: python src/train.py
 
+      - name: Run Unit & Integration Tests
+        run: python -m pytest tests/ -v
+
       - name: Enforce MLOps Quality Gate
         run: python src/quality_gate.py
 
       - name: Upload Evaluation Artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: mlops-evaluation-reports
           path: reports/

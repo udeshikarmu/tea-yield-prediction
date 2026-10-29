@@ -1,0 +1,70 @@
+name: Closed-Loop Drift Monitoring & Retraining
+
+on:
+  schedule:
+    - cron: '0 0 * * 0'   # Runs weekly on Sunday at midnight UTC
+  workflow_dispatch:      # Can also be triggered manually from GitHub Actions tab
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  monitor_and_retrain:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Pull Dataset from DagsHub DVC (if needed)
+        env:
+          DAGSHUB_USERNAME: ${{ secrets.DAGSHUB_USERNAME }}
+          DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
+        run: |
+          if [ ! -f "data/raw/sri_lanka_tea_tri.gov_ds.csv" ]; then
+            dvc remote modify origin --local auth basic
+            dvc remote modify origin --local user "$DAGSHUB_USERNAME"
+            dvc remote modify origin --local password "$DAGSHUB_TOKEN"
+            dvc pull
+          fi
+
+      - name: Run Evidently / Statistical Drift Check
+        id: drift_check
+        continue-on-error: true
+        run: |
+          python monitoring/run_drift.py
+
+      - name: Retrain Champion Model & Verify Quality Gate (Triggered if Drift Detected)
+        if: steps.drift_check.outcome == 'failure' || github.event_name == 'workflow_dispatch'
+        env:
+          DAGSHUB_USERNAME: ${{ secrets.DAGSHUB_USERNAME }}
+          DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
+        run: |
+          python src/preprocess.py
+          python src/train.py
+          python src/quality_gate.py
+
+      - name: Open Pull Request with Retrained Model
+        if: steps.drift_check.outcome == 'failure' || github.event_name == 'workflow_dispatch'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore(mlops): automated model retraining after drift detection"
+          title: "Automated Model Retraining (Climate Drift Detected)"
+          body: |
+            ### Automated Closed-Loop Retraining
+            - **Trigger:** Agro-climatic data drift detected (`p < 0.05` / `PSI > 0.25`) by `monitoring/run_drift.py`.
+            - **Action:** Retrained CatBoost Champion model and verified against `src/quality_gate.py`.
+            - **Next Step:** Review updated metrics in `reports/metrics.json` and merge to trigger CD deployment.
+          branch: automated-retrain/drift-detected
+          delete-branch: true

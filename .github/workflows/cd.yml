@@ -2,7 +2,7 @@ name: CD Deploy to Azure Container Apps (Keyless OIDC)
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, master ]
   workflow_dispatch:
 
 permissions:
@@ -39,9 +39,17 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Deploy Canary Revision to Azure Container Apps
+      - name: Deploy Revision to Azure Container Apps
         run: |
+          az containerapp registry set \
+            --name tea-harvest-service \
+            --resource-group rg-tea-mlops \
+            --server ghcr.io \
+            --username ${{ github.actor }} \
+            --password ${{ secrets.GITHUB_TOKEN }}
+
           az containerapp update \
             --name tea-harvest-service \
             --resource-group rg-tea-mlops \
-            --image ghcr.io/${{ github.repository }}/tea-api:latest
+            --image ghcr.io/${{ github.repository }}/tea-api:latest \
+            --revision-suffix v-${{ github.run_number }}
