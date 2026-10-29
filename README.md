@@ -138,6 +138,8 @@ Open **`http://localhost:3000`** in your browser. The Next.js frontend connects 
    * `AZURE_CLIENT_ID`
    * `AZURE_TENANT_ID`
    * `AZURE_SUBSCRIPTION_ID`
+   * `GHCR_USERNAME`
+   * `GHCR_TOKEN` (classic PAT with `read:packages` and `write:packages`)
 3. Pushing code to `main` will build the Docker container, push to **GitHub Container Registry (GHCR)**, and deploy keylessly to Azure Container Apps with canary releases.
 
 ### Drift Monitoring & Closed-Loop Retraining
