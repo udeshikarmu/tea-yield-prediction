@@ -28,7 +28,7 @@ jobs:
 
       - name: Build and Push FastAPI Image
         run: |
-          IMAGE_TAG=ghcr.io/${{ github.repository }}/tea-api:latest
+          IMAGE_TAG=$(echo "ghcr.io/${{ github.repository }}/tea-api:latest" | tr '[:upper:]' '[:lower:]')
           docker build -t $IMAGE_TAG -f app/Dockerfile .
           docker push $IMAGE_TAG
 
@@ -39,14 +39,17 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Deploy Revision to Azure Container Apps
+      - name: Deploy to Azure Container Apps
         run: |
-          az containerapp registry remove \
+          IMAGE_TAG=$(echo "ghcr.io/${{ github.repository }}/tea-api:latest" | tr '[:upper:]' '[:lower:]')
+          az containerapp create \
             --name tea-harvest-service \
             --resource-group rg-tea-mlops \
-            --server ghcr.io || true
-
-          az containerapp update \
-            --name tea-harvest-service \
-            --resource-group rg-tea-mlops \
-            --image ghcr.io/${{ github.repository }}/tea-api:latest
+            --environment env-tea-mlops \
+            --image $IMAGE_TAG \
+            --registry-server ghcr.io \
+            --registry-username ${{ github.actor }} \
+            --registry-password ${{ secrets.GITHUB_TOKEN }} \
+            --target-port 8000 \
+            --ingress external \
+            --revisions-mode single
