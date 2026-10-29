@@ -39,6 +39,18 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
+      - name: Configure GHCR credentials for Azure Container Apps
+        env:
+          GHCR_USERNAME: ${{ secrets.GHCR_USERNAME }}
+          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
+        run: |
+          az containerapp registry set \
+            --name tea-harvest-service \
+            --resource-group rg-tea-mlops \
+            --server ghcr.io \
+            --username "$GHCR_USERNAME" \
+            --password "$GHCR_TOKEN"
+
       - name: Deploy to Azure Container Apps
         run: |
           IMAGE_TAG=$(echo "ghcr.io/${{ github.repository }}/tea-api:latest" | tr '[:upper:]' '[:lower:]')
