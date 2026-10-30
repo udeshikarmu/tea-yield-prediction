@@ -32,11 +32,16 @@ app.add_middleware(
 MODEL_PATH = "models/champion_model.joblib"
 EXPLAINER_PATH = "models/shap_explainer.joblib"
 
-if not os.path.exists(MODEL_PATH) or not os.path.exists(EXPLAINER_PATH):
-    raise RuntimeError("Model or SHAP explainer not found. Run 'src/train.py' first.")
+if not os.path.exists(MODEL_PATH):
+    raise RuntimeError("Model not found. Run 'src/train.py' first.")
 
 champion_model = joblib.load(MODEL_PATH)
-explainer = joblib.load(EXPLAINER_PATH)
+try:
+    import shap
+    explainer = joblib.load(EXPLAINER_PATH)
+except Exception:
+    import shap
+    explainer = shap.TreeExplainer(champion_model)
 
 # Automatically use the exact feature order learned during training
 FEATURES_ORDER = champion_model.feature_names_
