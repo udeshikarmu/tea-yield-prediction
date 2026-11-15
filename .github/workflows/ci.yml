@@ -38,17 +38,30 @@ jobs:
       - name: Execute Temporal Preprocessing
         run: python src/preprocess.py
 
+      # MLflow runs are logged to the DagsHub "Experiments" tab only for pushes to master/main
+      # (i.e. after a PR is merged). Other branches/PRs train locally without tracking.
       - name: Train Champion CatBoost & Baselines
         env:
+          IS_RELEASE_BRANCH: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main') }}
           DAGSHUB_USERNAME: ${{ secrets.DAGSHUB_USERNAME }}
           DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
-        run: python src/train.py
+        run: |
+          if [ "$IS_RELEASE_BRANCH" != "true" ]; then
+            unset DAGSHUB_USERNAME DAGSHUB_TOKEN
+          fi
+          python src/train.py
 
       - name: Run Unit & Integration Tests
         run: python -m pytest tests/ -v
 
       - name: Enforce MLOps Quality Gate
         run: python src/quality_gate.py
+
+      - name: Register Dataset in DagsHub Data Engine (master only)
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main')
+        env:
+          DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
+        run: python src/register_dataset.py
 
       - name: Upload Evaluation Artifacts
         uses: actions/upload-artifact@v4
