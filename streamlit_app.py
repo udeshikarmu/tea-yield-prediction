@@ -1,5 +1,5 @@
 """
-Streamlit Front-End Application for the Machine Learning Assignment:
+Streamlit Front-End Application for:
 "An Integrated Agro-Climatic Intelligence System for Sri Lankan Tea Plantations"
 Combines CatBoost Harvest Readiness Classification, Yield Estimation, and SHAP Explainable AI (XAI).
 """
@@ -178,7 +178,7 @@ shap_contribs = {
     for col, val in zip(FEATURES_ORDER, shap_values_single.values[0])
 }
 
-# Navigation Tabs matching Assignment Rubric
+# Navigation Tabs
 tab1, tab2, tab3, tab4 = st.tabs([
     "🔮 Live Prediction & Local SHAP (XAI)",
     "📊 Model Evaluation & Baselines",
@@ -252,7 +252,7 @@ with tab1:
         )
 
 with tab2:
-    st.subheader("📈 Comparative Evaluation: CatBoost (New Algorithm) vs Lecture Baselines")
+    st.subheader("📈 Comparative Evaluation: CatBoost vs Baseline Models")
     st.markdown(
         "Trained using a strict **Temporal Split** (**Train:** 2001–2018 | **Validation:** 2019–2021 | **Out-of-Time Test:** 2022–2024) "
         "to prevent look-ahead data leakage."
@@ -289,7 +289,7 @@ with tab3:
         st.dataframe(imp_df, use_container_width=True, hide_index=True)
 
         st.markdown("""
-        #### Why CatBoost Was Selected Over Standard Lecture Models:
+        #### Why CatBoost Was Selected Over the Baseline Models:
         1. **Native Ordered Target Statistics:** Handles categorical features (`region`, `zone`, `season`) without high-dimensional one-hot encoding.
         2. **Oblivious (Symmetric) Decision Trees:** Uses identical splitting criteria across an entire tree depth level, acting as a structural regularizer and enabling rapid inference.
         3. **Ordered Boosting:** Prevents target shift and prediction leakage on sequential agro-climatic time-series data.

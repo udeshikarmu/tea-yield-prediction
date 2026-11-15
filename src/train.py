@@ -174,7 +174,7 @@ def train_models():
         verbose=100
     )
 
-    # 2. Train Standard Lecture Baseline Models
+    # 2. Train Baseline Models
     print("\n" + "=" * 60)
     print("TRAINING BASELINE 1: Logistic Regression")
     print("TRAINING BASELINE 2: Single Decision Tree")
@@ -235,7 +235,7 @@ def train_models():
         plt.plot(fpr, tpr, label=f"{name} (AUC = {auc:.3f})")
 
     plt.plot([0, 1], [0, 1], "k--", alpha=0.6, label="Random Guess")
-    plt.title("Comparative ROC Curves: Champion CatBoost vs Baseline Lecture Models", fontsize=12)
+    plt.title("Comparative ROC Curves: Champion CatBoost vs Baseline Models", fontsize=12)
     plt.xlabel("False Positive Rate")
     plt.ylabel("True Positive Rate")
     plt.legend(loc="lower right")
