@@ -42,28 +42,24 @@ The diagram below shows how code, data and models move from a developer's machin
    |              (GitHub Actions: Tests -> CatBoost Train -> Quality Gate)            |
    +--------------------+------------------------------------+-------------------------+
                         |                                    |
-     DVC Data & MLflow  |                                    | Promoted upon passing
+     DVC Data & MLflow  |                                    | Merge to master after passing
      Tracking/Registry  v                                    v F1 >= 0.85 & AUC >= 0.88
           +-----------------------+               +-----------------------+
-          |        DagsHub        |               |    Build & Publish    |
-          |  MLflow Experiments   |               | Docker Image -> GHCR  |
-          |   & DVC Remote Data   |               +-----------+-----------+
-          +-----------------------+                           |
-                                                              | OIDC Keyless Auth + Human Approval
+          |        DagsHub        |               |  Streamlit Community  |
+          |  MLflow Experiments   |               |  Cloud auto-redeploys |
+          |   & DVC Remote Data   |               |  from master branch   |
+          +-----------------------+               +-----------+-----------+
+                                                              |
                                                               v
    +-----------------------------------------------------------------------------------+
-   |                           3. Production Cloud Deployment                          |
-   |           Azure Container Apps (FastAPI Model Service + SHAP Explainer)           |
-   |                                         ^                                         |
-   |                         REST API Calls  |  Telemetry Ingestion                    |
-   |                                         v                                         |
-   |     +-------------------------+                   +-------------------------+     |
-   |     |    Next.js Web UI       |                   |  App Insights / Azure   |     |
-   |     | (Interactive Dashboard) |                   |      Log Analytics      |     |
-   |     +-------------------------+                   +------------+------------+     |
-   +----------------------------------------------------------------|------------------+
-                                                                    |
-                                                                    v
+   |                           3. Production Deployment                                |
+   |        Streamlit Dashboard (CatBoost Model + Live SHAP Explanations)              |
+   |                                                                                   |
+   |   Plantation users enter field conditions -> harvest readiness, probability,      |
+   |   estimated yield and SHAP attribution charts, plus evaluation reports            |
+   +-----------------------------------------+-----------------------------------------+
+                                             |
+                                             v
    +-----------------------------------------------------------------------------------+
    |                     4. Continuous Monitoring & Closed-Loop Retrain                |
    |           Evidently AI Drift Detection (KS-Test & Population Stability Index)     |
@@ -80,7 +76,7 @@ The diagram below shows how code, data and models move from a developer's machin
 
 **Stage 2: Continuous Integration.** Every push or pull request starts a GitHub Actions workflow ([.github/workflows/ci.yml](.github/workflows/ci.yml)) that runs the test suite, retrains the CatBoost model and runs the **quality gate**. The gate only lets a model through if it reaches **F1 ≥ 0.85** and **ROC-AUC ≥ 0.88** on held-out data. Experiment runs, parameters and metrics are logged to **MLflow on DagsHub**, which also hosts the DVC remote storage.
 
-**Stage 3: Continuous Deployment.** Once a model passes the gate, the CD workflow ([.github/workflows/cd.yml](.github/workflows/cd.yml)) packages the FastAPI service into a Docker image, publishes it to the **GitHub Container Registry (GHCR)** and deploys it to **Azure Container Apps**. Authentication uses **OpenID Connect (OIDC)**, so no long-lived cloud passwords are stored in the repository. The workflow runs in a protected `production` environment, so a human reviewer must approve each production release. The running service sends telemetry to **Azure Application Insights / Log Analytics**.
+**Stage 3: Deployment.** The application is deployed on **Streamlit Community Cloud**, which is connected directly to the GitHub repository's `master` branch. When a pull request passes CI and the quality gate and is merged, Streamlit Cloud redeploys [streamlit_app.py](streamlit_app.py) automatically with the latest model in `models/`, so no separate deployment pipeline or cloud credentials are needed. The dashboard loads the trained CatBoost model and SHAP explainer and computes explanations live for every prediction.
 
 **Stage 4: Monitoring and closed-loop retraining.** A scheduled workflow ([.github/workflows/monitor.yml](.github/workflows/monitor.yml), weekly on Sundays) compares recent production inputs with the training distribution using **Evidently AI**. Two statistical tests are used:
 - **Kolmogorov–Smirnov (KS) test**: flags a feature as drifted when p < 0.05.
@@ -146,19 +142,27 @@ This mirrors how the model is actually used: it learns from the past and predict
 
 ---
 
-## 3. Assignment Rubric Compliance (100 Marks + 10 Bonus Marks)
+## 3. Model, Results and Explainability
 
-The table below maps each assessment criterion to where it is implemented in this codebase.
+### Key highlights
 
-| Rubric Section | Marks | Implementation in this Codebase |
-| :--- | :---: | :--- |
-| **1. Problem Definition & Dataset Collection** | **15** | Addresses agro-climatic challenges for Sri Lankan tea across 11 regions. Uses a real dataset (`sri_lanka_tea_tri.gov_ds.csv`, 3,168 records, 2001–2024). Agricultural data is handled ethically and validated with a Pydantic data contract (`src/data_contract.py`). |
-| **2. Selection of a "New" ML Algorithm** | **15** | **CatBoost (Categorical Boosting)**, which was not covered in lectures. It uses symmetric (oblivious) decision trees and **ordered boosting**, which reduces target leakage and overfitting on tabular climate data, and it handles categorical features such as region and season natively without one-hot encoding. |
-| **3. Model Training & Evaluation** | **20** | A **temporal train/validation/test split** prevents lookahead leakage. CatBoost is compared with **Decision Tree** and **Logistic Regression** baselines and reaches **0.9903 F1** and **0.9998 ROC-AUC** on the unseen 2022–2024 test set. |
-| **4. Explainability & Interpretation (XAI)** | **20** | **SHAP TreeExplainer** produces global beeswarm plots (`reports/shap_summary.png`) and local, per-prediction feature attributions. These explanations are checked against Tea Research Institute (TRI) agronomic guidance to confirm the model has learned sensible relationships. |
-| **5. Critical Discussion** | **10** | Discusses the limits of monthly temporal aggregation, regional agro-ecological bias, gaps in satellite NDVI caused by cloud cover, and the socioeconomic impact on plantation superintendents and workers. |
-| **6. Report Quality & Technical Clarity** | **10** | Publication-quality ROC curves, confusion matrices, SHAP plots and clear architecture documentation. |
-| **7. Bonus: Front-End Integration** | **10** | A **Next.js web application**, a built-in FastAPI dashboard and a **Streamlit** app, all offering interactive predictions with real-time SHAP attribution bars and drift simulation. |
+- **Real-world data:** 3,168 agro-climatic records from 11 Sri Lankan tea regions, spanning 2001–2024.
+- **Leakage-free evaluation:** a chronological train/validation/test split, so the model is always tested on years it has never seen.
+- **Explainable predictions:** SHAP shows which climate factors drove each decision, and these explanations can be checked against Tea Research Institute (TRI) agronomic guidance.
+- **Production-style MLOps:** data contracts, versioned data, experiment tracking, automated quality gates, drift monitoring and automated retraining.
+- **Interactive dashboards:** a Streamlit app, a Next.js web app and a built-in FastAPI dashboard, all with live SHAP explanations.
+
+### Model performance
+
+All three models were evaluated on the unseen 2022–2024 test set:
+
+| Model | Accuracy | Precision | Recall | F1 | ROC-AUC |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| **CatBoost (champion)** | 0.9874 | 0.9845 | 0.9961 | 0.9903 | **0.9998** |
+| Decision Tree | 0.9899 | 0.9883 | 0.9961 | 0.9922 | 0.9871 |
+| Logistic Regression | 0.6869 | 0.7399 | 0.7922 | 0.7652 | 0.6679 |
+
+CatBoost and the Decision Tree score almost the same on accuracy and F1. CatBoost has the highest ROC-AUC, which means its readiness probabilities rank fields more reliably. Those probabilities are what the dashboard shows as a confidence score. Logistic Regression scores much lower, which shows that harvest readiness depends on non-linear interactions between climate variables.
 
 ### Why CatBoost?
 
@@ -236,7 +240,7 @@ Interactive Swagger documentation is generated automatically at **`http://localh
 
 ---
 
-## 5. Front-End Applications (Bonus)
+## 5. Front-End Applications
 
 ### Next.js web application
 
@@ -260,7 +264,7 @@ streamlit run streamlit_app.py
 
 ---
 
-## 6. MLOps CI/CD and Cloud Setup (Azure and DagsHub)
+## 6. MLOps CI/CD and Cloud Setup (DagsHub and Streamlit Cloud)
 
 ### DagsHub: MLflow tracking and DVC data storage
 
@@ -280,18 +284,16 @@ DagsHub hosts the experiment tracking server (MLflow) and the remote storage for
    * `DAGSHUB_USERNAME`
    * `DAGSHUB_TOKEN`
 
-### Azure Container Apps: keyless OIDC deployment
+### Streamlit Community Cloud: deployment
 
-Deployment uses OpenID Connect federation. GitHub Actions proves its identity to Azure with a short-lived token, so no Azure passwords or keys are stored anywhere.
+The dashboard is hosted on [Streamlit Community Cloud](https://streamlit.io/cloud), which deploys straight from GitHub, so no Docker image or cloud credentials are needed.
 
-1. In Azure, create an **App Registration** and add a **Federated Credential** that trusts your GitHub repository (`main` branch).
-2. Add the following GitHub Actions secrets:
-   * `AZURE_CLIENT_ID`: the App Registration's client ID
-   * `AZURE_TENANT_ID`: your Azure Active Directory tenant ID
-   * `AZURE_SUBSCRIPTION_ID`: the subscription that hosts the Container App
-   * `GHCR_USERNAME`: the GitHub username that owns a package-read token
-   * `GHCR_TOKEN`: a GitHub token with read-only access to the container package
-3. Pushing to `main` then builds the Docker image, publishes it to **GHCR** and, after approval, deploys it to **Azure Container Apps** using **canary releases**. A small share of traffic goes to the new version first, so problems can be caught before every user is affected.
+1. Sign in to [share.streamlit.io](https://share.streamlit.io) with your GitHub account.
+2. Click **Create app**, choose this repository, set the branch to `master` and the main file path to `streamlit_app.py`.
+3. Under **Advanced settings**, pick **Python 3.11** to match CI. Streamlit Cloud installs the packages listed in `requirements.txt` automatically.
+4. Click **Deploy**. Every later merge to `master` redeploys the app automatically.
+
+The app reads the trained model from `models/` and the evaluation figures from `reports/`, so both folders must be committed to the repository for the deployed dashboard to work.
 
 ### Drift monitoring and closed-loop retraining
 
