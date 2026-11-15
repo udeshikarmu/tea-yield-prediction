@@ -41,3 +41,6 @@ registry:
 
 tracking:
   experiment_name: "tea-harvest-readiness-experiment"
+  dagshub_repo: "udeshikarmu/tea-yield-prediction"   # owner/name on DagsHub (MLflow server + Data Engine)
+  dagshub_datasource: "tea-agro-climatic-data"        # Data Engine datasource (points at the data/ folder)
+  dagshub_dataset: "sri-lanka-tea-tri-dataset"        # Saved dataset shown in the DagsHub "Datasets" tab

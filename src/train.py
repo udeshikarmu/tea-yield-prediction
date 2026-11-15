@@ -31,6 +31,111 @@ def load_config(config_path="config/config.yaml"):
         return yaml.safe_load(f)
 
 
+def setup_dagshub_tracking(config):
+    """
+    Point MLflow at the DagsHub-hosted tracking server so runs appear in the
+    repository's "Experiments" tab. Returns the mlflow module, or None when
+    credentials / the package are unavailable (e.g. local runs, fork PRs).
+    """
+    user = os.getenv("DAGSHUB_USERNAME")
+    token = os.getenv("DAGSHUB_TOKEN")
+    if not (user and token):
+        print("[MLflow] DAGSHUB_USERNAME / DAGSHUB_TOKEN not set - skipping DagsHub experiment tracking.")
+        return None
+    try:
+        import mlflow
+    except ImportError:
+        print("[MLflow] mlflow is not installed - skipping DagsHub experiment tracking.")
+        return None
+
+    os.environ["MLFLOW_TRACKING_USERNAME"] = user
+    os.environ["MLFLOW_TRACKING_PASSWORD"] = token
+    repo = config["tracking"]["dagshub_repo"]
+    mlflow.set_tracking_uri(f"https://dagshub.com/{repo}.mlflow")
+    mlflow.set_experiment(config["tracking"]["experiment_name"])
+    print(f"[MLflow] Logging experiments to https://dagshub.com/{repo}.mlflow")
+    return mlflow
+
+
+def _dvc_data_version(config):
+    """Return the DVC md5 of the raw dataset so every run is linked to an exact data version."""
+    dvc_file = config["data"]["raw_path"] + ".dvc"
+    try:
+        with open(dvc_file, "r") as f:
+            return yaml.safe_load(f)["outs"][0]["md5"]
+    except Exception:
+        return "unknown"
+
+
+def _simple_params(estimator):
+    """Keep only scalar hyperparameters so MLflow can log them."""
+    return {
+        k: v for k, v in estimator.get_params().items()
+        if isinstance(v, (int, float, str, bool)) or v is None
+    }
+
+
+def log_runs_to_mlflow(mlflow, config, models, results, splits):
+    """Log one MLflow run per model (params, metrics, data lineage) and the champion's artifacts."""
+    data_version = _dvc_data_version(config)
+    target = config["data"]["target"]
+    data_source_url = (
+        f"https://dagshub.com/{config['tracking']['dagshub_repo']}/src/master/{config['data']['raw_path']}"
+    )
+    common_tags = {
+        "git_commit": os.getenv("GITHUB_SHA", "local"),
+        "git_branch": os.getenv("GITHUB_REF_NAME", "local"),
+        "triggered_by": "github-actions" if os.getenv("GITHUB_ACTIONS") else "local",
+        "dvc_data_md5": data_version,
+        "temporal_split": (
+            f"train<={config['data']['temporal_split']['train_end_year']}, "
+            f"val<={config['data']['temporal_split']['val_end_year']}, "
+            f"test>={config['data']['temporal_split']['test_start_year']}"
+        ),
+    }
+
+    for name, model in models.items():
+        is_champion = name == "CatBoost (Champion)"
+        with mlflow.start_run(run_name=name):
+            mlflow.set_tags({**common_tags, "role": "champion" if is_champion else "baseline"})
+
+            if is_champion:
+                mlflow.log_params(config["model"]["params"])
+                mlflow.log_param("early_stopping_rounds", config["model"]["early_stopping_rounds"])
+                mlflow.log_param("best_iteration", model.get_best_iteration())
+            else:
+                clf = model.named_steps["clf"]
+                mlflow.log_param("algorithm", type(clf).__name__)
+                mlflow.log_params(_simple_params(clf))
+
+            mlflow.log_metrics({f"test_{k.lower()}": v for k, v in results[name].items()})
+
+            # Dataset lineage: shown under "Datasets used" for each run
+            try:
+                for split_name, df in splits.items():
+                    ds = mlflow.data.from_pandas(
+                        df, source=data_source_url,
+                        name=f"tea-{split_name}", targets=target,
+                    )
+                    mlflow.log_input(ds, context=split_name)
+            except Exception as e:
+                print(f"[MLflow] Could not log dataset inputs: {e}")
+
+            if is_champion:
+                mlflow.log_artifacts("reports", artifact_path="reports")
+                mlflow.log_artifact("config/config.yaml", artifact_path="config")
+                try:
+                    import mlflow.catboost
+                    mlflow.catboost.log_model(
+                        model, artifact_path="model",
+                        registered_model_name=config["registry"]["model_name"],
+                    )
+                except Exception as e:
+                    print(f"[MLflow] Could not log/register CatBoost model: {e}")
+
+        print(f"[MLflow] Logged run: {name}")
+
+
 def train_models():
     config = load_config()
     processed_dir = config["data"]["processed_dir"]
@@ -188,6 +293,18 @@ def train_models():
     print("\nSaved trained model to 'models/champion_model.joblib'")
     print("Saved SHAP explainer to 'models/shap_explainer.joblib'")
     print("All evaluation plots generated in 'reports/' directory.")
+
+    # 7. Experiment tracking on DagsHub (MLflow) - populates the "Experiments" tab
+    mlflow = setup_dagshub_tracking(config)
+    if mlflow is not None:
+        try:
+            log_runs_to_mlflow(
+                mlflow, config, models, results,
+                splits={"train": train_df, "validation": val_df, "test": test_df},
+            )
+        except Exception as e:
+            # Tracking problems must not hide a good model; surface them as a CI warning instead.
+            print(f"::warning::MLflow logging to DagsHub failed: {e}")
 
     return results
 
