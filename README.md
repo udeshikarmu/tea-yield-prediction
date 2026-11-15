@@ -273,7 +273,7 @@ DagsHub hosts the experiment tracking server (MLflow) and the remote storage for
 1. Create a free repository on [DagsHub.com](https://dagshub.com) named `tea-harvest-mlops`.
 2. Connect your local Git and DVC setup to it:
    ```bash
-   dvc remote add origin https://dagshub.com/<username>/tea-harvest-mlops.dvc
+   dvc remote add origin https://dagshub.com/udeshikarmu/tea-harvest-mlops.dvc
    dvc remote modify origin --local auth basic
    dvc remote modify origin --local user <username>
    dvc remote modify origin --local password <dagshub_token>
